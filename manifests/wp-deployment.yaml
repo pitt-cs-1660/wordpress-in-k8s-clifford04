@@ -10,6 +10,9 @@ spec:
   ports:
     - port: 80
       name: http
+  selector:
+    app: wordpress
+    tier: frontend
   ##
   # create service selector labels here
   # hint: match the deployment's labels (app: wordpress, tier: frontend)
@@ -20,6 +23,8 @@ kind: ConfigMap
 metadata:
   name: wordpress
 data:
+  host: wordpress-mysql
+  user: wordpress
   ##
   # create non-sensitive data attributes
   # host: wordpress-mysql
@@ -35,12 +40,20 @@ metadata:
     tier: frontend
 spec:
   replicas: 3
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
   ##
   # create deployment selector here
   # app: wordpress
   # tier: frontend
   ##
   template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
     ##
     # create pod metadata labels here (match the selectorLabels)
     ##
@@ -49,6 +62,21 @@ spec:
       - image: wordpress:6.2.1-apache
         name: wordpress
         env:
+        - name: WORDPRESS_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wordpress
+              key: host
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: wordpress
+              key: user
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database
+              key: user-password
         ##
         # mount non-sensitive environment vars from configmap using configMapKeyRef
         # WORDPRESS_DB_HOST (from wordpress configmap, key: host)
@@ -62,17 +90,34 @@ spec:
         ports:
         - containerPort: 80
           name: wordpress
+        volumeMounts:
+        - name: wp-persistent-storage
+          mountPath: /var/www/html
         ##
         # add volumeMounts inside the container spec above
         # mount path: /var/www/html
         ##
-
+        volumes:
+        - name: wp-persistent-storage
+          persistentVolumeClaim:
+            claimName: wp-pv-claim
       ##
       # add volumes at the pod spec level (same indentation as containers)
       # reference the PVC: wp-pv-claim
       ##
 
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
 ##
 # create persistent volume claim here
 # name: wp-pv-claim

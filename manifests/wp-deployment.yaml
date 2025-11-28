@@ -97,10 +97,13 @@ spec:
         # add volumeMounts inside the container spec above
         # mount path: /var/www/html
         ##
-        volumes:
-        - name: wp-persistent-storage
-          persistentVolumeClaim:
-            claimName: wp-pv-claim
+      ##
+      # volumes must be defined at the pod spec level (sibling of `containers`)
+      # not inside the container definition. Reference the PVC here.
+      volumes:
+      - name: wp-persistent-storage
+        persistentVolumeClaim:
+          claimName: wp-pv-claim
       ##
       # add volumes at the pod spec level (same indentation as containers)
       # reference the PVC: wp-pv-claim
